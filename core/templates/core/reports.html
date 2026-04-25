@@ -31,7 +31,7 @@
                         <label class="form-label">Period</label>
                         <select name="period" class="form-select">
                             {% for val, label, is_selected in period_choices %}
-                                <option value="{{ val }}" {% if is_selected %}selected{% endif %}>{{ label }}</option>
+                            <option value="{{ val }}" {% if is_selected %}selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -149,7 +149,7 @@
                 <div class="card-body p-4 d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="text-white-50 mb-1 fw-bold">NET CASH ON HAND (SELECTED PERIOD)</h6>
-                        <h2 class="mb-0 fw-bold">₱{{ cash_on_hand|floatformat:2 }}</h2>
+                        <h2 class="mb-0 fw-bold text-white">₱{{ cash_on_hand|floatformat:2 }}</h2>
                         <small class="text-white-50">Combined Sales + Initial Cash + Adjustments - Withdrawals</small>
                     </div>
                     <div style="font-size: 3rem; opacity: 0.2;">
