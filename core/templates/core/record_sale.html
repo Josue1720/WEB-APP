@@ -45,17 +45,13 @@
                                         <option value="">-- Select Product --</option>
                                     </select>
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-3">
                                     <label class="form-label">Qty</label>
                                     <input type="number" class="form-control" id="addQty" value="1" min="1">
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Price</label>
-                                    <input type="text" class="form-control" id="addPrice" readonly>
-                                </div>
-                                <div class="col-md-2">
+                                <div class="col-md-4">
                                     <button type="button" class="btn btn-success w-100" id="addItemBtn">
-                                        <i class="bi bi-plus-lg"></i> Add
+                                        <i class="bi bi-plus-lg me-1"></i> Add Item
                                     </button>
                                 </div>
                             </div>
@@ -148,10 +144,20 @@ products.forEach(p => {
     productSelect.appendChild(opt);
 });
 
-// Show price when product selected
+// Product selection behavior
 productSelect.addEventListener('change', function() {
-    const selected = this.options[this.selectedIndex];
-    document.getElementById('addPrice').value = selected.value ? `₱${parseFloat(selected.dataset.price).toFixed(2)}` : '';
+    if (this.value) {
+        document.getElementById('addQty').focus();
+        document.getElementById('addQty').select();
+    }
+});
+
+// Allow 'Enter' key on quantity to add item
+document.getElementById('addQty').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('addItemBtn').click();
+    }
 });
 
 // Add item
@@ -182,7 +188,7 @@ document.getElementById('addItemBtn').addEventListener('click', function() {
     renderItems();
     productSelect.value = '';
     document.getElementById('addQty').value = 1;
-    document.getElementById('addPrice').value = '';
+    productSelect.focus();
 });
 
 function removeItem(id) {

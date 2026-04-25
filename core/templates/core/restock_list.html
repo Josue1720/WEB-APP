@@ -1,0 +1,115 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Restocking History — Sales Logbook{% endblock %}
+
+{% block body %}
+{% include "core/partials/sidebar.html" %}
+
+<div class="main-content">
+    <div class="top-bar d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-outline-light d-lg-none" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div>
+                <h5 class="mb-0 fw-bold">Restocking History</h5>
+                <small class="text-muted">Track inventory replenishment events</small>
+            </div>
+        </div>
+        <a href="{% url 'restock_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Add Restock
+        </a>
+    </div>
+
+    <div class="page-content fade-in">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+
+        <!-- Search -->
+        <div class="card mb-3">
+            <div class="card-body py-3">
+                <form method="get" class="row g-2 align-items-end">
+                    <div class="col-md-10">
+                        <input type="text" name="search" class="form-control" placeholder="Search by product, reference, or supplier..." value="{{ search }}">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body p-0">
+                {% if restocks %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Ref #</th>
+                                <th>Date</th>
+                                <th>Product</th>
+                                <th class="text-center">Qty Added</th>
+                                <th>Supplier</th>
+                                <th>Staff</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for restock in restocks %}
+                            <tr>
+                                <td><code>{{ restock.reference_number }}</code></td>
+                                <td>
+                                    <div class="fw-semibold">{{ restock.date|date:"M d, Y" }}</div>
+                                    <small class="text-muted">{{ restock.date|date:"h:i A" }}</small>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">{{ restock.product.name }}</div>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-info bg-opacity-25 text-info">+{{ restock.quantity }}</span>
+                                </td>
+                                <td>{{ restock.supplier|default:"—" }}</td>
+                                <td>{{ restock.user.get_full_name|default:restock.user.username }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if restocks.has_other_pages %}
+                <div class="d-flex justify-content-center py-3">
+                    <nav>
+                        <ul class="pagination mb-0">
+                            {% if restocks.has_previous %}
+                            <li class="page-item"><a class="page-link" href="?page={{ restocks.previous_page_number }}&search={{ search }}">&laquo;</a></li>
+                            {% endif %}
+                            {% for num in restocks.paginator.page_range %}
+                                {% if num == restocks.number %}
+                                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% elif num > restocks.number|add:"-3" and num < restocks.number|add:"3" %}
+                                <li class="page-item"><a class="page-link" href="?page={{ num }}&search={{ search }}">{{ num }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if restocks.has_next %}
+                            <li class="page-item"><a class="page-link" href="?page={{ restocks.next_page_number }}&search={{ search }}">&raquo;</a></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-inboxes"></i>
+                    <p>No restocking history found. <a href="{% url 'restock_create' %}">Record a restock!</a></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

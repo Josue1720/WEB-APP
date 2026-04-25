@@ -30,9 +30,9 @@
                     <div class="col-md-3">
                         <label class="form-label">Period</label>
                         <select name="period" class="form-select">
-                            <option value="daily" {% if period == 'daily' %}selected{% endif %}>Daily</option>
-                            <option value="weekly" {% if period == 'weekly' %}selected{% endif %}>Weekly</option>
-                            <option value="monthly" {% if period == 'monthly' %}selected{% endif %}>Monthly</option>
+                            {% for val, label, is_selected in period_choices %}
+                                <option value="{{ val }}" {% if is_selected %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -84,136 +84,209 @@
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="row g-3">
-            <!-- Sales Trend -->
-            <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="bi bi-graph-up me-2"></i>Sales Trend ({{ period|title }})
+            <!-- Cash Summary Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="card kpi-card kpi-primary border-0 shadow-sm"
+                        style="background: linear-gradient(135deg, #e3f2fd 0%, #fff 100%);">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="kpi-icon" style="background: #0d6efd; color: white;">
+                                    <i class="bi bi-wallet2"></i>
+                                </div>
+                                <div>
+                                    <div class="kpi-value text-dark" style="font-size: 1.25rem;">
+                                        ₱{{ cash_summary.initial|default:"0"|floatformat:2 }}</div>
+                                    <div class="kpi-label text-muted" style="font-size: 0.75rem;">Total Initial Cash
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="chart-container">
-                            <canvas id="trendChart"></canvas>
+                </div>
+                <div class="col-md-4">
+                    <div class="card kpi-card kpi-info border-0 shadow-sm"
+                        style="background: linear-gradient(135deg, #e0f7fa 0%, #fff 100%);">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="kpi-icon" style="background: #0dcaf0; color: white;">
+                                    <i class="bi bi-cash-stack"></i>
+                                </div>
+                                <div>
+                                    <div class="kpi-value text-dark" style="font-size: 1.25rem;">
+                                        ₱{{ cash_summary.adjustment|default:"0"|floatformat:2 }}</div>
+                                    <div class="kpi-label text-muted" style="font-size: 0.75rem;">Total Adjustments
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card kpi-card kpi-danger border-0 shadow-sm"
+                        style="background: linear-gradient(135deg, #ffebee 0%, #fff 100%);">
+                        <div class="card-body py-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="kpi-icon" style="background: #dc3545; color: white;">
+                                    <i class="bi bi-cash-dash"></i>
+                                </div>
+                                <div>
+                                    <div class="kpi-value text-dark" style="font-size: 1.25rem;">
+                                        ₱{{cash_summary.withdrawal|default:"0"|floatformat:2 }}</div>
+                                    <div class="kpi-label text-muted" style="font-size: 0.75rem;">Total Withdrawals
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Product Performance Chart -->
-            <div class="col-lg-4">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="bi bi-pie-chart-fill me-2"></i>Product Revenue
+            <!-- Net Cash on Hand -->
+            <div class="card mb-4 border-0 shadow-sm"
+                style="background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%); color: white;">
+                <div class="card-body p-4 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-white-50 mb-1 fw-bold">NET CASH ON HAND (SELECTED PERIOD)</h6>
+                        <h2 class="mb-0 fw-bold">₱{{ cash_on_hand|floatformat:2 }}</h2>
+                        <small class="text-white-50">Combined Sales + Initial Cash + Adjustments - Withdrawals</small>
                     </div>
-                    <div class="card-body">
-                        <div class="chart-container">
-                            <canvas id="productChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row g-3 mt-1">
-            <!-- Product Performance Table -->
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="bi bi-box-seam-fill me-2"></i>Product Performance
-                    </div>
-                    <div class="card-body p-0">
-                        {% if product_performance %}
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Product</th>
-                                        <th class="text-center">Qty Sold</th>
-                                        <th class="text-end">Revenue</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for p in product_performance %}
-                                    <tr>
-                                        <td class="fw-semibold">{{ p.product_name }}</td>
-                                        <td class="text-center">{{ p.total_qty }}</td>
-                                        <td class="text-end fw-bold">₱{{ p.total_revenue|floatformat:2 }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <div class="empty-state">
-                            <i class="bi bi-box-seam"></i>
-                            <p>No data available</p>
-                        </div>
-                        {% endif %}
+                    <div style="font-size: 3rem; opacity: 0.2;">
+                        <i class="bi bi-safe2-fill"></i>
                     </div>
                 </div>
             </div>
 
-            <!-- Staff Performance -->
-            <div class="col-lg-6">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="bi bi-people-fill me-2"></i>Staff Performance
+            <div class="row g-3">
+                <!-- Sales Trend -->
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-graph-up me-2"></i>Sales Trend ({{ period|title }})
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="trendChart"></canvas>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body p-0">
-                        {% if staff_performance %}
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Staff</th>
-                                        <th class="text-center">Transactions</th>
-                                        <th class="text-end">Total Sales</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for s in staff_performance %}
-                                    <tr>
-                                        <td class="fw-semibold">
-                                            {% if s.user__first_name %}{{ s.user__first_name }} {{ s.user__last_name }}{% else %}{{ s.user__username }}{% endif %}
-                                        </td>
-                                        <td class="text-center">{{ s.transaction_count }}</td>
-                                        <td class="text-end fw-bold">₱{{ s.total_sales|floatformat:2 }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                </div>
+
+                <!-- Product Performance Chart -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-pie-chart-fill me-2"></i>Product Revenue
                         </div>
-                        {% else %}
-                        <div class="empty-state">
-                            <i class="bi bi-people"></i>
-                            <p>No data available</p>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="productChart"></canvas>
+                            </div>
                         </div>
-                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <!-- Product Performance Table -->
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-box-seam-fill me-2"></i>Product Performance
+                        </div>
+                        <div class="card-body p-0">
+                            {% if product_performance %}
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th class="text-center">Qty Sold</th>
+                                            <th class="text-end">Revenue</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for p in product_performance %}
+                                        <tr>
+                                            <td class="fw-semibold">{{ p.product_name }}</td>
+                                            <td class="text-center">{{ p.total_qty }}</td>
+                                            <td class="text-end fw-bold">₱{{ p.total_revenue|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <i class="bi bi-box-seam"></i>
+                                <p>No data available</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Staff Performance -->
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-people-fill me-2"></i>Staff Performance
+                        </div>
+                        <div class="card-body p-0">
+                            {% if staff_performance %}
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Staff</th>
+                                            <th class="text-center">Transactions</th>
+                                            <th class="text-end">Total Sales</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for s in staff_performance %}
+                                        <tr>
+                                            <td class="fw-semibold">
+                                                {% if s.user__first_name %}{{ s.user__first_name }} {{ s.user__last_name
+                                                }}{% else %}{{ s.user__username }}{% endif %}
+                                            </td>
+                                            <td class="text-center">{{ s.transaction_count }}</td>
+                                            <td class="text-end fw-bold">₱{{ s.total_sales|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <i class="bi bi-people"></i>
+                                <p>No data available</p>
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+    {% endblock %}
 
-{% block extra_js %}
-<script>
-// Sales Trend Chart
-const trendCtx = document.getElementById('trendChart').getContext('2d');
-const trendGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
-trendGradient.addColorStop(0, 'rgba(46, 125, 50, 0.25)');
-trendGradient.addColorStop(1, 'rgba(46, 125, 50, 0.02)');
+    {% block extra_js %}
+    <script>
+        // Sales Trend Chart
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        const trendGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
+        trendGradient.addColorStop(0, 'rgba(46, 125, 50, 0.25)');
+        trendGradient.addColorStop(1, 'rgba(46, 125, 50, 0.02)');
 
-new Chart(trendCtx, {
-    type: 'bar',
-    data: {
-        labels: {{ chart_labels|safe }},
-        datasets: [{
-            label: 'Revenue (₱)',
-            data: {{ chart_data|safe }},
+        new Chart(trendCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ chart_labels| safe }},
+            datasets: [{
+                label: 'Revenue (₱)',
+                data: {{ chart_data| safe }},
             backgroundColor: 'rgba(46, 125, 50, 0.6)',
             borderColor: '#2e7d32',
             borderWidth: 1,
@@ -221,84 +294,84 @@ new Chart(trendCtx, {
             barPercentage: 0.7,
         }]
     },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                backgroundColor: '#ffffff',
-                titleColor: '#1a2e1a',
-                bodyColor: '#4a6b4a',
-                borderColor: '#d7e5d7',
-                borderWidth: 1,
-                cornerRadius: 10,
-                padding: 12,
-                callbacks: {
-                    label: ctx => '₱' + ctx.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2})
-                }
-            }
-        },
-        scales: {
-            x: {
-                grid: { color: 'rgba(0,0,0,0.06)' },
-                ticks: { color: '#4a6b4a', font: { size: 10 }, maxRotation: 45 }
-            },
-            y: {
-                grid: { color: 'rgba(0,0,0,0.06)' },
-                ticks: {
-                    color: '#4a6b4a',
-                    font: { size: 11 },
-                    callback: v => '₱' + v.toLocaleString()
-                }
-            }
-        }
-    }
-});
-
-// Product Doughnut Chart
-const productLabels = {{ product_labels|safe }};
-const productData = {{ product_revenue|safe }};
-const colors = ['#1b5e20', '#2e7d32', '#388e3c', '#43a047', '#4caf50', '#66bb6a', '#81c784', '#a5d6a7', '#c8e6c9', '#7a957a'];
-
-if (productLabels.length > 0) {
-    new Chart(document.getElementById('productChart'), {
-        type: 'doughnut',
-        data: {
-            labels: productLabels,
-            datasets: [{
-                data: productData,
-                backgroundColor: colors.slice(0, productLabels.length),
-                borderWidth: 0,
-                hoverOffset: 8,
-            }]
-        },
-        options: {
+            options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '65%',
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: '#4a6b4a',
-                        padding: 12,
-                        font: { size: 11 },
-                        usePointStyle: true,
-                        pointStyleWidth: 10,
-                    }
-                },
+                legend: { display: false },
                 tooltip: {
                     backgroundColor: '#ffffff',
                     titleColor: '#1a2e1a',
                     bodyColor: '#4a6b4a',
+                    borderColor: '#d7e5d7',
+                    borderWidth: 1,
+                    cornerRadius: 10,
+                    padding: 12,
                     callbacks: {
-                        label: ctx => `${ctx.label}: ₱${ctx.parsed.toLocaleString(undefined, {minimumFractionDigits: 2})}`
+                        label: ctx => '₱' + ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 })
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(0,0,0,0.06)' },
+                    ticks: { color: '#4a6b4a', font: { size: 10 }, maxRotation: 45 }
+                },
+                y: {
+                    grid: { color: 'rgba(0,0,0,0.06)' },
+                    ticks: {
+                        color: '#4a6b4a',
+                        font: { size: 11 },
+                        callback: v => '₱' + v.toLocaleString()
                     }
                 }
             }
         }
-    });
-}
-</script>
-{% endblock %}
+});
+
+        // Product Doughnut Chart
+        const productLabels = {{ product_labels| safe }};
+        const productData = {{ product_revenue| safe }};
+        const colors = ['#1b5e20', '#2e7d32', '#388e3c', '#43a047', '#4caf50', '#66bb6a', '#81c784', '#a5d6a7', '#c8e6c9', '#7a957a'];
+
+        if (productLabels.length > 0) {
+            new Chart(document.getElementById('productChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: productLabels,
+                    datasets: [{
+                        data: productData,
+                        backgroundColor: colors.slice(0, productLabels.length),
+                        borderWidth: 0,
+                        hoverOffset: 8,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#4a6b4a',
+                                padding: 12,
+                                font: { size: 11 },
+                                usePointStyle: true,
+                                pointStyleWidth: 10,
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#ffffff',
+                            titleColor: '#1a2e1a',
+                            bodyColor: '#4a6b4a',
+                            callbacks: {
+                                label: ctx => `${ctx.label}: ₱${ctx.parsed.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+    {% endblock %}

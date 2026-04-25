@@ -107,3 +107,62 @@ class SaleItem(models.Model):
         if self.product and not self.product_name:
             self.product_name = self.product.name
         super().save(*args, **kwargs)
+
+
+class Restock(models.Model):
+    """Track restocking / inventory replenishment."""
+    reference_number = models.CharField(max_length=30, unique=True, editable=False)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='restocks')
+    quantity = models.PositiveIntegerField(help_text="Number of units added to stock")
+    supplier = models.CharField(max_length=200, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='restocks')
+    date = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"RST-{self.reference_number} | {self.product.name} +{self.quantity}"
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        if not self.reference_number:
+            # Generate reference: RST-YYYYMMDD-XXXX
+            today = timezone.now().strftime('%Y%m%d')
+            last = Restock.objects.filter(
+                reference_number__startswith=f'RST-{today}'
+            ).order_by('-reference_number').first()
+            if last:
+                last_num = int(last.reference_number.split('-')[-1])
+                new_num = last_num + 1
+            else:
+                new_num = 1
+            self.reference_number = f'RST-{today}-{new_num:04d}'
+        super().save(*args, **kwargs)
+        # Auto-update product stock on new restock
+        if is_new:
+            self.product.stock += self.quantity
+            self.product.save(update_fields=['stock'])
+
+
+class CashLog(models.Model):
+    """Record initial cash (petty cash) or other cash adjustments."""
+    LOG_TYPES = (
+        ('initial', 'Initial Cash / Petty Cash'),
+        ('adjustment', 'Cash Adjustment'),
+        ('withdrawal', 'Cash Withdrawal'),
+    )
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='cash_logs')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    log_type = models.CharField(max_length=20, choices=LOG_TYPES, default='initial')
+    notes = models.TextField(blank=True, null=True)
+    date = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.get_log_type_display()} - ₱{self.amount:,.2f} ({self.date.strftime('%Y-%m-%d')})"

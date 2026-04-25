@@ -85,6 +85,9 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
+                                    <a href="{% url 'restock_create' %}?product={{ product.pk }}" class="btn btn-sm btn-info text-white me-1" title="Restock">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </a>
                                     <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-warning me-1" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>

@@ -14,10 +14,10 @@ from django.db.models.functions import TruncDate, TruncWeek, TruncMonth
 from django.utils import timezone
 from django.core.paginator import Paginator
 
-from .models import User, Product, Sale, SaleItem
+from .models import User, Product, Sale, SaleItem, Restock, CashLog
 from .forms import (
     LoginForm, UserCreateForm, UserEditForm,
-    ProductForm, SaleForm,
+    ProductForm, SaleForm, RestockForm, CashLogForm,
 )
 from .decorators import role_required
 
@@ -108,12 +108,29 @@ def dashboard(request):
     # Recent sales
     recent_sales = base_qs[:10]
 
+    # Low stock alerts (only for managers/admins)
+    low_stock_products = []
+    if request.user.role in ['admin', 'manager']:
+        low_stock_products = Product.objects.filter(is_active=True, stock__lte=5).order_by('stock')
+
+    # Cash on Hand (Today)
+    today_sales_total = sales_today['total'] or 0
+    today_cash_logs = CashLog.objects.filter(date__gte=today_start)
+    
+    initial_cash = today_cash_logs.filter(log_type='initial').aggregate(Sum('amount'))['amount__sum'] or 0
+    adjustments = today_cash_logs.filter(log_type='adjustment').aggregate(Sum('amount'))['amount__sum'] or 0
+    withdrawals = today_cash_logs.filter(log_type='withdrawal').aggregate(Sum('amount'))['amount__sum'] or 0
+    
+    cash_on_hand = float(today_sales_total) + float(initial_cash) + float(adjustments) - float(withdrawals)
+
     context = {
         'sales_today': sales_today,
         'sales_week': sales_week,
         'sales_month': sales_month,
         'top_products': top_products,
         'recent_sales': recent_sales,
+        'low_stock_products': low_stock_products,
+        'cash_on_hand': cash_on_hand,
         'chart_labels': json.dumps(chart_labels),
         'chart_data': json.dumps(chart_data),
     }
@@ -314,9 +331,40 @@ def reports(request):
         .order_by('-total_sales')[:10]
     )
 
+    # Cash Log Analytics
+    cash_qs = CashLog.objects.all()
+    if date_from:
+        cash_qs = cash_qs.filter(date__date__gte=date_from)
+    if date_to:
+        cash_qs = cash_qs.filter(date__date__lte=date_to)
+
+    cash_summary = {item['log_type']: float(item['total'] or 0) for item in cash_qs.values('log_type').annotate(total=Sum('amount'))}
+    
+    # Total Cash on Hand for this period
+    total_sales = float(summary['total_revenue'] or 0)
+    net_cash_logs = cash_summary.get('initial', 0) + cash_summary.get('adjustment', 0) - cash_summary.get('withdrawal', 0)
+    cash_on_hand = total_sales + net_cash_logs
+
+    # Cash trend data for Chart.js
+    if period == 'weekly':
+        cash_grouped = cash_qs.annotate(p=TruncWeek('date'))
+    elif period == 'monthly':
+        cash_grouped = cash_qs.annotate(p=TruncMonth('date'))
+    else:
+        cash_grouped = cash_qs.annotate(p=TruncDate('date'))
+
+    cash_trend_raw = cash_grouped.values('p', 'log_type').annotate(total=Sum('amount')).order_by('p')
+    
+    period_choices = [
+        ('daily', 'Daily', period == 'daily'),
+        ('weekly', 'Weekly', period == 'weekly'),
+        ('monthly', 'Monthly', period == 'monthly'),
+    ]
+    
     context = {
         'summary': summary,
         'period': period,
+        'period_choices': period_choices,
         'date_from': date_from,
         'date_to': date_to,
         'chart_labels': json.dumps(chart_labels),
@@ -326,6 +374,8 @@ def reports(request):
         'product_revenue': json.dumps(product_revenue),
         'product_performance': product_performance,
         'staff_performance': staff_performance,
+        'cash_summary': cash_summary,
+        'cash_on_hand': cash_on_hand,
     }
     return render(request, 'core/reports.html', context)
 
@@ -429,6 +479,98 @@ def product_delete(request, pk):
         messages.success(request, 'Product deleted.')
         return redirect('product_list')
     return render(request, 'core/product_confirm_delete.html', {'product': product})
+
+
+# ─────────────────────────────────────────────
+# RESTOCKING (INVENTORY)
+# ─────────────────────────────────────────────
+@login_required
+@role_required('admin', 'manager')
+def restock_list(request):
+    """List all restocking history."""
+    restocks = Restock.objects.select_related('product', 'user').all()
+    
+    search = request.GET.get('search', '').strip()
+    if search:
+        restocks = restocks.filter(
+            Q(product__name__icontains=search) | 
+            Q(reference_number__icontains=search) |
+            Q(supplier__icontains=search)
+        )
+
+    paginator = Paginator(restocks, 20)
+    page = request.GET.get('page', 1)
+    restocks = paginator.get_page(page)
+    
+    return render(request, 'core/restock_list.html', {
+        'restocks': restocks,
+        'search': search
+    })
+
+
+@login_required
+@role_required('admin', 'manager')
+def restock_create(request):
+    """Add a new restocking entry."""
+    if request.method == 'POST':
+        form = RestockForm(request.POST)
+        if form.is_valid():
+            restock = form.save(commit=False)
+            restock.user = request.user
+            restock.save()
+            messages.success(request, f'Restock {restock.reference_number} recorded. {restock.product.name} stock updated to {restock.product.stock}.')
+            return redirect('restock_list')
+    else:
+        # Pre-fill product if ID is in GET params
+        product_id = request.GET.get('product')
+        initial = {}
+        if product_id:
+            initial['product'] = product_id
+        form = RestockForm(initial=initial)
+    
+    return render(request, 'core/restock_form.html', {
+        'form': form,
+        'title': 'Add Restock'
+    })
+
+
+# ─────────────────────────────────────────────
+# CASH LOGGING (PETTY CASH)
+# ─────────────────────────────────────────────
+@login_required
+def cash_log_list(request):
+    """List all cash logs."""
+    logs = CashLog.objects.select_related('user').all()
+    
+    # Staff only see their own logs
+    if request.user.role == 'staff':
+        logs = logs.filter(user=request.user)
+
+    paginator = Paginator(logs, 20)
+    page = request.GET.get('page', 1)
+    logs = paginator.get_page(page)
+    
+    return render(request, 'core/cash_log_list.html', {'logs': logs})
+
+
+@login_required
+def cash_log_create(request):
+    """Record a new cash log."""
+    if request.method == 'POST':
+        form = CashLogForm(request.POST)
+        if form.is_valid():
+            log = form.save(commit=False)
+            log.user = request.user
+            log.save()
+            messages.success(request, f'Cash log of ₱{log.amount:,.2f} recorded.')
+            return redirect('cash_log_list')
+    else:
+        form = CashLogForm()
+    
+    return render(request, 'core/cash_log_form.html', {
+        'form': form,
+        'title': 'Record Initial Cash / Petty Cash'
+    })
 
 
 # ─────────────────────────────────────────────

@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
-from .models import User, Product, Sale, SaleItem
+from .models import User, Product, Sale, SaleItem, Restock, CashLog
 
 
 class LoginForm(forms.Form):
@@ -99,3 +99,28 @@ class SaleItemForm(forms.Form):
         decimal_places=2,
         widget=forms.NumberInput(attrs={'class': 'form-control price-input', 'step': '0.01', 'readonly': 'readonly'})
     )
+
+
+class RestockForm(forms.ModelForm):
+    """Form for inventory restocking."""
+    class Meta:
+        model = Restock
+        fields = ['product', 'quantity', 'supplier', 'notes']
+        widgets = {
+            'product': forms.Select(attrs={'class': 'form-select select2'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'supplier': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Supplier name'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Optional details about this batch'}),
+        }
+
+
+class CashLogForm(forms.ModelForm):
+    """Form for recording cash logs."""
+    class Meta:
+        model = CashLog
+        fields = ['amount', 'log_type', 'notes']
+        widgets = {
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
+            'log_type': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Reason or description...'}),
+        }

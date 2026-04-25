@@ -24,6 +24,14 @@ urlpatterns = [
     path('products/<int:pk>/edit/', views.product_edit, name='product_edit'),
     path('products/<int:pk>/delete/', views.product_delete, name='product_delete'),
 
+    # Restocking
+    path('restock/', views.restock_list, name='restock_list'),
+    path('restock/add/', views.restock_create, name='restock_create'),
+
+    # Cash Logs
+    path('cash-log/', views.cash_log_list, name='cash_log_list'),
+    path('cash-log/add/', views.cash_log_create, name='cash_log_create'),
+
     # Users
     path('users/', views.user_list, name='user_list'),
     path('users/add/', views.user_create, name='user_create'),
