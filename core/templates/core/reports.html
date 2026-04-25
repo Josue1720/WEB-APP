@@ -248,8 +248,8 @@
                                         {% for s in staff_performance %}
                                         <tr>
                                             <td class="fw-semibold">
-                                                {% if s.user__first_name %}{{ s.user__first_name }} {{ s.user__last_name
-                                                }}{% else %}{{ s.user__username }}{% endif %}
+                                                {% if s.user__first_name %}{{ s.user__first_name }}
+                                                {{ s.user__last_name }}{% else %}{{ s.user__username }}{% endif %}
                                             </td>
                                             <td class="text-center">{{ s.transaction_count }}</td>
                                             <td class="text-end fw-bold">₱{{ s.total_sales|floatformat:2 }}</td>
