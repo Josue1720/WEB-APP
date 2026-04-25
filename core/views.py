@@ -355,16 +355,9 @@ def reports(request):
 
     cash_trend_raw = cash_grouped.values('p', 'log_type').annotate(total=Sum('amount')).order_by('p')
     
-    period_choices = [
-        ('daily', 'Daily', period == 'daily'),
-        ('weekly', 'Weekly', period == 'weekly'),
-        ('monthly', 'Monthly', period == 'monthly'),
-    ]
-    
     context = {
         'summary': summary,
         'period': period,
-        'period_choices': period_choices,
         'date_from': date_from,
         'date_to': date_to,
         'chart_labels': json.dumps(chart_labels),
