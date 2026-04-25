@@ -1,0 +1,134 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Products — Sales Logbook{% endblock %}
+
+{% block body %}
+{% include "core/partials/sidebar.html" %}
+
+<div class="main-content">
+    <div class="top-bar d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-outline-light d-lg-none" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div>
+                <h5 class="mb-0 fw-bold">Products</h5>
+                <small class="text-muted">Manage your product catalog</small>
+            </div>
+        </div>
+        <a href="{% url 'product_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Add Product
+        </a>
+    </div>
+
+    <div class="page-content fade-in">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+
+        <!-- Search -->
+        <div class="card mb-3">
+            <div class="card-body py-3">
+                <form method="get" class="row g-2 align-items-end">
+                    <div class="col-md-10">
+                        <input type="text" name="search" class="form-control" placeholder="Search by name or SKU..." value="{{ search }}">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body p-0">
+                {% if products %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>SKU</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-center">Stock</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in products %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ product.name }}</div>
+                                    {% if product.description %}<small class="text-muted">{{ product.description|truncatewords:10 }}</small>{% endif %}
+                                </td>
+                                <td><code>{{ product.sku|default:"—" }}</code></td>
+                                <td class="text-end fw-bold">₱{{ product.price|floatformat:2 }}</td>
+                                <td class="text-center">
+                                    {% if product.stock <= 5 and product.stock > 0 %}
+                                    <span class="badge bg-warning bg-opacity-25 text-warning">{{ product.stock }}</span>
+                                    {% elif product.stock == 0 %}
+                                    <span class="badge bg-danger bg-opacity-25 text-danger">Out of stock</span>
+                                    {% else %}
+                                    <span class="badge bg-success bg-opacity-25 text-success">{{ product.stock }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if product.is_active %}
+                                    <span class="badge bg-success bg-opacity-25 text-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary bg-opacity-25 text-secondary">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <a href="{% url 'product_edit' product.pk %}" class="btn btn-sm btn-warning me-1" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% if request.user.role == 'admin' %}
+                                    <a href="{% url 'product_delete' product.pk %}" class="btn btn-sm btn-danger" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if products.has_other_pages %}
+                <div class="d-flex justify-content-center py-3">
+                    <nav>
+                        <ul class="pagination mb-0">
+                            {% if products.has_previous %}
+                            <li class="page-item"><a class="page-link" href="?page={{ products.previous_page_number }}&search={{ search }}">&laquo;</a></li>
+                            {% endif %}
+                            {% for num in products.paginator.page_range %}
+                                {% if num == products.number %}
+                                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% elif num > products.number|add:"-3" and num < products.number|add:"3" %}
+                                <li class="page-item"><a class="page-link" href="?page={{ num }}&search={{ search }}">{{ num }}</a></li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if products.has_next %}
+                            <li class="page-item"><a class="page-link" href="?page={{ products.next_page_number }}&search={{ search }}">&raquo;</a></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-box-seam"></i>
+                    <p>No products found. <a href="{% url 'product_create' %}">Add your first product!</a></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

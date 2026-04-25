@@ -1,0 +1,244 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Dashboard — Sales Logbook{% endblock %}
+
+{% block body %}
+{% include "core/partials/sidebar.html" %}
+
+<div class="main-content">
+    <!-- Top Bar -->
+    <div class="top-bar d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-outline-light d-lg-none" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div>
+                <h5 class="mb-0 fw-bold">Dashboard</h5>
+                <small class="text-muted">Welcome back, {{ request.user.first_name|default:request.user.username }}!</small>
+            </div>
+        </div>
+        <a href="{% url 'record_sale' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> New Sale
+        </a>
+    </div>
+
+    <div class="page-content fade-in">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+
+        <!-- KPI Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-sm-6 col-xl-3">
+                <div class="card kpi-card kpi-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="kpi-icon" style="background: var(--primary);">
+                                <i class="bi bi-currency-exchange"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-value">₱{{ sales_today.total|default:"0"|floatformat:2 }}</div>
+                        <div class="kpi-label">Sales Today</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card kpi-card kpi-accent">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="kpi-icon" style="background: var(--accent);">
+                                <i class="bi bi-calendar-week"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-value">₱{{ sales_week.total|default:"0"|floatformat:2 }}</div>
+                        <div class="kpi-label">Sales This Week</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card kpi-card kpi-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="kpi-icon" style="background: var(--success);">
+                                <i class="bi bi-calendar-month"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-value">₱{{ sales_month.total|default:"0"|floatformat:2 }}</div>
+                        <div class="kpi-label">Sales This Month</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card kpi-card kpi-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="kpi-icon" style="background: var(--warning);">
+                                <i class="bi bi-receipt"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-value">{{ sales_today.count|default:"0" }}</div>
+                        <div class="kpi-label">Transactions Today</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <!-- Sales Trend Chart -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-graph-up me-2"></i>Sales Trend (Last 14 Days)</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="salesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Products -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-trophy-fill me-2"></i>Top Products (30 Days)
+                    </div>
+                    <div class="card-body p-0">
+                        {% if top_products %}
+                        <div class="list-group list-group-flush">
+                            {% for p in top_products %}
+                            <div class="list-group-item bg-transparent border-0 px-4 py-3" style="border-bottom: 1px solid var(--border-color) !important;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-semibold" style="font-size: 0.9rem;">{{ p.product_name }}</div>
+                                        <small class="text-muted">{{ p.total_qty }} units sold</small>
+                                    </div>
+                                    <span class="badge bg-primary bg-opacity-25 text-primary-emphasis">₱{{ p.total_revenue|floatformat:2 }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="bi bi-box-seam"></i>
+                            <p>No sales data yet</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Sales -->
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clock-history me-2"></i>Recent Sales</span>
+                <a href="{% url 'sales_history' %}" class="btn btn-sm btn-outline-light">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_sales %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Invoice</th>
+                                <th>Date</th>
+                                <th>Staff</th>
+                                <th>Customer</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in recent_sales %}
+                            <tr style="cursor:pointer" onclick="window.location='{% url 'sale_detail' sale.pk %}'">
+                                <td><span class="fw-semibold text-primary">{{ sale.invoice_number }}</span></td>
+                                <td>{{ sale.date|date:"M d, Y h:i A" }}</td>
+                                <td>{{ sale.user.get_full_name|default:sale.user.username }}</td>
+                                <td>{{ sale.customer_name|default:"Walk-in" }}</td>
+                                <td class="text-end fw-bold">₱{{ sale.total_amount|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-journal-x"></i>
+                    <p>No sales recorded yet. <a href="{% url 'record_sale' %}">Record your first sale!</a></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const ctx = document.getElementById('salesChart').getContext('2d');
+const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+gradient.addColorStop(0, 'rgba(46, 125, 50, 0.25)');
+gradient.addColorStop(1, 'rgba(46, 125, 50, 0.02)');
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ chart_labels|safe }},
+        datasets: [{
+            label: 'Sales (₱)',
+            data: {{ chart_data|safe }},
+            borderColor: '#2e7d32',
+            backgroundColor: gradient,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#2e7d32',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#ffffff',
+                titleColor: '#1a2e1a',
+                bodyColor: '#4a6b4a',
+                borderColor: '#d7e5d7',
+                borderWidth: 1,
+                cornerRadius: 10,
+                padding: 12,
+                callbacks: {
+                    label: function(ctx) {
+                        return '₱' + ctx.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                grid: { color: 'rgba(0,0,0,0.06)' },
+                ticks: { color: '#4a6b4a', font: { size: 11 } }
+            },
+            y: {
+                grid: { color: 'rgba(0,0,0,0.06)' },
+                ticks: {
+                    color: '#4a6b4a',
+                    font: { size: 11 },
+                    callback: val => '₱' + val.toLocaleString()
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

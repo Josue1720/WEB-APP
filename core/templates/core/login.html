@@ -1,0 +1,37 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Login — Sales Logbook{% endblock %}
+
+{% block body %}
+<div class="login-wrapper">
+    <div class="login-card fade-in">
+        <div class="logo">
+            <i class="bi bi-journal-bookmark-fill"></i> Sales Logbook
+        </div>
+        <p class="subtitle">Sign in to your account</p>
+
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+
+        <form method="post" id="loginForm">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Username</label>
+                {{ form.username }}
+            </div>
+            <div class="mb-4">
+                <label class="form-label">Password</label>
+                {{ form.password }}
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-2" id="loginBtn">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

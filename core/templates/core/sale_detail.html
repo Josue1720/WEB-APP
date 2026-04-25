@@ -1,0 +1,103 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Sale {{ sale.invoice_number }} — Sales Logbook{% endblock %}
+
+{% block body %}
+{% include "core/partials/sidebar.html" %}
+
+<div class="main-content">
+    <div class="top-bar d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-outline-light d-lg-none" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div>
+                <h5 class="mb-0 fw-bold">Sale Details</h5>
+                <small class="text-muted">{{ sale.invoice_number }}</small>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-light" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> Print
+            </button>
+            <a href="{% url 'sales_history' %}" class="btn btn-outline-light">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <div class="page-content fade-in">
+        <div class="card receipt-card">
+            <div class="card-body p-4">
+                <div class="receipt-header">
+                    <h3 class="text-gradient fw-bold mb-1">Sales Logbook</h3>
+                    <p class="text-muted mb-0">Sales Receipt</p>
+                </div>
+
+                <div class="row mt-3 mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Invoice Number</small>
+                        <strong>{{ sale.invoice_number }}</strong>
+                    </div>
+                    <div class="col-6 text-end">
+                        <small class="text-muted d-block">Date</small>
+                        <strong>{{ sale.date|date:"M d, Y h:i A" }}</strong>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Staff</small>
+                        <strong>{{ sale.user.get_full_name|default:sale.user.username }}</strong>
+                    </div>
+                    <div class="col-6 text-end">
+                        <small class="text-muted d-block">Customer</small>
+                        <strong>{{ sale.customer_name|default:"Walk-in" }}</strong>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Price</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in sale.items.all %}
+                            <tr>
+                                <td>{{ item.product_name }}</td>
+                                <td class="text-center">{{ item.quantity }}</td>
+                                <td class="text-end">₱{{ item.price|floatformat:2 }}</td>
+                                <td class="text-end fw-semibold">₱{{ item.line_total|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="text-end fw-bold" style="font-size: 1.15rem; border-top: 2px solid var(--border-color);">TOTAL</td>
+                                <td class="text-end fw-bold text-primary" style="font-size: 1.25rem; border-top: 2px solid var(--border-color);">₱{{ sale.total_amount|floatformat:2 }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                {% if sale.notes %}
+                <div class="mt-3 p-3" style="background: rgba(148,163,184,0.05); border-radius: 10px;">
+                    <small class="text-muted d-block mb-1"><i class="bi bi-sticky me-1"></i>Notes</small>
+                    {{ sale.notes }}
+                </div>
+                {% endif %}
+
+                <div class="receipt-footer">
+                    <p class="mb-0">Thank you for your purchase!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

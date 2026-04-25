@@ -1,0 +1,250 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Record Sale — Sales Logbook{% endblock %}
+
+{% block body %}
+{% include "core/partials/sidebar.html" %}
+
+<div class="main-content">
+    <div class="top-bar d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-outline-light d-lg-none" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div>
+                <h5 class="mb-0 fw-bold">Record Sale</h5>
+                <small class="text-muted">Create a new sales transaction</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-content fade-in">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+
+        <form method="post" id="saleForm">
+            {% csrf_token %}
+            <div class="row g-3">
+                <!-- Sale Items -->
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-cart-plus-fill me-2"></i>Sale Items</span>
+                        </div>
+                        <div class="card-body">
+                            <!-- Add Item Row -->
+                            <div class="row g-2 mb-3 align-items-end">
+                                <div class="col-md-5">
+                                    <label class="form-label">Product</label>
+                                    <select class="form-select" id="addProduct">
+                                        <option value="">-- Select Product --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Qty</label>
+                                    <input type="number" class="form-control" id="addQty" value="1" min="1">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Price</label>
+                                    <input type="text" class="form-control" id="addPrice" readonly>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-success w-100" id="addItemBtn">
+                                        <i class="bi bi-plus-lg"></i> Add
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Items Table -->
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0" id="itemsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Product</th>
+                                            <th class="text-center">Qty</th>
+                                            <th class="text-end">Price</th>
+                                            <th class="text-end">Subtotal</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="itemsBody">
+                                        <tr id="emptyRow">
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                <i class="bi bi-inbox" style="font-size: 1.5rem;"></i>
+                                                <br>No items added yet
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="4" class="text-end fw-bold" style="font-size: 1.1rem;">GRAND TOTAL:</td>
+                                            <td class="text-end fw-bold text-primary" style="font-size: 1.25rem;" id="grandTotal">₱0.00</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sale Info -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="bi bi-info-circle-fill me-2"></i>Sale Details
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Date & Time</label>
+                                <input type="text" class="form-control" value="{% now 'M d, Y h:i A' %}" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Staff</label>
+                                <input type="text" class="form-control" value="{{ request.user.get_full_name|default:request.user.username }}" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Customer Name</label>
+                                {{ form.customer_name }}
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                {{ form.notes }}
+                            </div>
+                            <input type="hidden" name="items_data" id="itemsData" value="[]">
+                            <button type="submit" class="btn btn-primary w-100 py-2 mt-2" id="submitSale">
+                                <i class="bi bi-check-circle me-2"></i>Save Sale
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const products = {{ products_json|safe }};
+let saleItems = [];
+let itemCounter = 0;
+
+// Populate product dropdown
+const productSelect = document.getElementById('addProduct');
+products.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = `${p.name} — ₱${p.price.toFixed(2)} (Stock: ${p.stock})`;
+    opt.dataset.price = p.price;
+    opt.dataset.name = p.name;
+    opt.dataset.stock = p.stock;
+    productSelect.appendChild(opt);
+});
+
+// Show price when product selected
+productSelect.addEventListener('change', function() {
+    const selected = this.options[this.selectedIndex];
+    document.getElementById('addPrice').value = selected.value ? `₱${parseFloat(selected.dataset.price).toFixed(2)}` : '';
+});
+
+// Add item
+document.getElementById('addItemBtn').addEventListener('click', function() {
+    const sel = productSelect.options[productSelect.selectedIndex];
+    if (!sel.value) { alert('Please select a product.'); return; }
+
+    const qty = parseInt(document.getElementById('addQty').value) || 1;
+    const price = parseFloat(sel.dataset.price);
+    const stock = parseInt(sel.dataset.stock);
+
+    // Check stock
+    const existingQty = saleItems.filter(i => i.product_id == sel.value).reduce((a, b) => a + b.quantity, 0);
+    if (stock > 0 && (existingQty + qty) > stock) {
+        alert(`Not enough stock. Available: ${stock - existingQty}`);
+        return;
+    }
+
+    itemCounter++;
+    saleItems.push({
+        id: itemCounter,
+        product_id: parseInt(sel.value),
+        name: sel.dataset.name,
+        quantity: qty,
+        price: price,
+    });
+
+    renderItems();
+    productSelect.value = '';
+    document.getElementById('addQty').value = 1;
+    document.getElementById('addPrice').value = '';
+});
+
+function removeItem(id) {
+    saleItems = saleItems.filter(i => i.id !== id);
+    renderItems();
+}
+
+function renderItems() {
+    const tbody = document.getElementById('itemsBody');
+    const emptyRow = document.getElementById('emptyRow');
+
+    if (saleItems.length === 0) {
+        tbody.innerHTML = '';
+        tbody.appendChild(createEmptyRow());
+        document.getElementById('grandTotal').textContent = '₱0.00';
+        document.getElementById('itemsData').value = '[]';
+        return;
+    }
+
+    tbody.innerHTML = '';
+    let grandTotal = 0;
+
+    saleItems.forEach((item, idx) => {
+        const subtotal = item.quantity * item.price;
+        grandTotal += subtotal;
+
+        const tr = document.createElement('tr');
+        tr.className = 'sale-item-row';
+        tr.innerHTML = `
+            <td>${idx + 1}</td>
+            <td class="fw-semibold">${item.name}</td>
+            <td class="text-center">${item.quantity}</td>
+            <td class="text-end">₱${item.price.toFixed(2)}</td>
+            <td class="text-end fw-bold">₱${subtotal.toFixed(2)}</td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-danger" onclick="removeItem(${item.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('grandTotal').textContent = `₱${grandTotal.toFixed(2)}`;
+    document.getElementById('itemsData').value = JSON.stringify(saleItems);
+}
+
+function createEmptyRow() {
+    const tr = document.createElement('tr');
+    tr.id = 'emptyRow';
+    tr.innerHTML = `<td colspan="6" class="text-center text-muted py-4">
+        <i class="bi bi-inbox" style="font-size: 1.5rem;"></i><br>No items added yet
+    </td>`;
+    return tr;
+}
+
+// Validate before submit
+document.getElementById('saleForm').addEventListener('submit', function(e) {
+    if (saleItems.length === 0) {
+        e.preventDefault();
+        alert('Please add at least one item to the sale.');
+    }
+});
+</script>
+{% endblock %}

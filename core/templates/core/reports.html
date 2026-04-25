@@ -1,0 +1,304 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Reports — Sales Logbook{% endblock %}
+
+{% block body %}
+{% include "core/partials/sidebar.html" %}
+
+<div class="main-content">
+    <div class="top-bar d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-outline-light d-lg-none" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div>
+                <h5 class="mb-0 fw-bold">Reports</h5>
+                <small class="text-muted">Sales analytics and export</small>
+            </div>
+        </div>
+        <a href="{% url 'export_csv' %}?date_from={{ date_from }}&date_to={{ date_to }}" class="btn btn-success">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+        </a>
+    </div>
+
+    <div class="page-content fade-in">
+        <!-- Filters -->
+        <div class="card mb-3">
+            <div class="card-body py-3">
+                <form method="get" class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Period</label>
+                        <select name="period" class="form-select">
+                            <option value="daily" {% if period == 'daily' %}selected{% endif %}>Daily</option>
+                            <option value="weekly" {% if period == 'weekly' %}selected{% endif %}>Weekly</option>
+                            <option value="monthly" {% if period == 'monthly' %}selected{% endif %}>Monthly</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">From</label>
+                        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">To</label>
+                        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-funnel me-1"></i> Apply Filter
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="card kpi-card kpi-primary">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="kpi-icon" style="background: var(--primary);">
+                                <i class="bi bi-currency-exchange"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-value">₱{{ summary.total_revenue|default:"0"|floatformat:2 }}</div>
+                                <div class="kpi-label">Total Revenue</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card kpi-card kpi-accent">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="kpi-icon" style="background: var(--accent);">
+                                <i class="bi bi-receipt"></i>
+                            </div>
+                            <div>
+                                <div class="kpi-value">{{ summary.total_transactions|default:"0" }}</div>
+                                <div class="kpi-label">Total Transactions</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <!-- Sales Trend -->
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-graph-up me-2"></i>Sales Trend ({{ period|title }})
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Performance Chart -->
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-pie-chart-fill me-2"></i>Product Revenue
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="productChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <!-- Product Performance Table -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-box-seam-fill me-2"></i>Product Performance
+                    </div>
+                    <div class="card-body p-0">
+                        {% if product_performance %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-center">Qty Sold</th>
+                                        <th class="text-end">Revenue</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in product_performance %}
+                                    <tr>
+                                        <td class="fw-semibold">{{ p.product_name }}</td>
+                                        <td class="text-center">{{ p.total_qty }}</td>
+                                        <td class="text-end fw-bold">₱{{ p.total_revenue|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="bi bi-box-seam"></i>
+                            <p>No data available</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staff Performance -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-people-fill me-2"></i>Staff Performance
+                    </div>
+                    <div class="card-body p-0">
+                        {% if staff_performance %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Staff</th>
+                                        <th class="text-center">Transactions</th>
+                                        <th class="text-end">Total Sales</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in staff_performance %}
+                                    <tr>
+                                        <td class="fw-semibold">
+                                            {% if s.user__first_name %}{{ s.user__first_name }} {{ s.user__last_name }}{% else %}{{ s.user__username }}{% endif %}
+                                        </td>
+                                        <td class="text-center">{{ s.transaction_count }}</td>
+                                        <td class="text-end fw-bold">₱{{ s.total_sales|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <i class="bi bi-people"></i>
+                            <p>No data available</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Sales Trend Chart
+const trendCtx = document.getElementById('trendChart').getContext('2d');
+const trendGradient = trendCtx.createLinearGradient(0, 0, 0, 300);
+trendGradient.addColorStop(0, 'rgba(46, 125, 50, 0.25)');
+trendGradient.addColorStop(1, 'rgba(46, 125, 50, 0.02)');
+
+new Chart(trendCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ chart_labels|safe }},
+        datasets: [{
+            label: 'Revenue (₱)',
+            data: {{ chart_data|safe }},
+            backgroundColor: 'rgba(46, 125, 50, 0.6)',
+            borderColor: '#2e7d32',
+            borderWidth: 1,
+            borderRadius: 6,
+            barPercentage: 0.7,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#ffffff',
+                titleColor: '#1a2e1a',
+                bodyColor: '#4a6b4a',
+                borderColor: '#d7e5d7',
+                borderWidth: 1,
+                cornerRadius: 10,
+                padding: 12,
+                callbacks: {
+                    label: ctx => '₱' + ctx.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2})
+                }
+            }
+        },
+        scales: {
+            x: {
+                grid: { color: 'rgba(0,0,0,0.06)' },
+                ticks: { color: '#4a6b4a', font: { size: 10 }, maxRotation: 45 }
+            },
+            y: {
+                grid: { color: 'rgba(0,0,0,0.06)' },
+                ticks: {
+                    color: '#4a6b4a',
+                    font: { size: 11 },
+                    callback: v => '₱' + v.toLocaleString()
+                }
+            }
+        }
+    }
+});
+
+// Product Doughnut Chart
+const productLabels = {{ product_labels|safe }};
+const productData = {{ product_revenue|safe }};
+const colors = ['#1b5e20', '#2e7d32', '#388e3c', '#43a047', '#4caf50', '#66bb6a', '#81c784', '#a5d6a7', '#c8e6c9', '#7a957a'];
+
+if (productLabels.length > 0) {
+    new Chart(document.getElementById('productChart'), {
+        type: 'doughnut',
+        data: {
+            labels: productLabels,
+            datasets: [{
+                data: productData,
+                backgroundColor: colors.slice(0, productLabels.length),
+                borderWidth: 0,
+                hoverOffset: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#4a6b4a',
+                        padding: 12,
+                        font: { size: 11 },
+                        usePointStyle: true,
+                        pointStyleWidth: 10,
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#ffffff',
+                    titleColor: '#1a2e1a',
+                    bodyColor: '#4a6b4a',
+                    callbacks: {
+                        label: ctx => `${ctx.label}: ₱${ctx.parsed.toLocaleString(undefined, {minimumFractionDigits: 2})}`
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

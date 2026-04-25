@@ -1,0 +1,142 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Sales History — Sales Logbook{% endblock %}
+
+{% block body %}
+{% include "core/partials/sidebar.html" %}
+
+<div class="main-content">
+    <div class="top-bar d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-outline-light d-lg-none" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+            <div>
+                <h5 class="mb-0 fw-bold">Sales History</h5>
+                <small class="text-muted">Browse and search all transactions</small>
+            </div>
+        </div>
+        <a href="{% url 'record_sale' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> New Sale
+        </a>
+    </div>
+
+    <div class="page-content fade-in">
+        <!-- Filters -->
+        <div class="card mb-3">
+            <div class="card-body py-3">
+                <form method="get" class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Search</label>
+                        <input type="text" name="search" class="form-control" placeholder="Invoice or customer..." value="{{ search }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">From</label>
+                        <input type="date" name="date_from" class="form-control" value="{{ date_from }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">To</label>
+                        <input type="date" name="date_to" class="form-control" value="{{ date_to }}">
+                    </div>
+                    {% if request.user.role != 'staff' %}
+                    <div class="col-md-2">
+                        <label class="form-label">Staff</label>
+                        <select name="staff" class="form-select">
+                            <option value="">All Staff</option>
+                            {% for s in staff_list %}
+                            <option value="{{ s.id }}" {% if staff_filter == s.id|stringformat:"d" %}selected{% endif %}>
+                                {{ s.get_full_name|default:s.username }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-2">
+                        <label class="form-label">Sort</label>
+                        <select name="sort" class="form-select">
+                            <option value="-date" {% if sort_by == '-date' %}selected{% endif %}>Newest First</option>
+                            <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Oldest First</option>
+                            <option value="-total_amount" {% if sort_by == '-total_amount' %}selected{% endif %}>Highest Amount</option>
+                            <option value="total_amount" {% if sort_by == 'total_amount' %}selected{% endif %}>Lowest Amount</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sales Table -->
+        <div class="card">
+            <div class="card-body p-0">
+                {% if sales %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Invoice</th>
+                                <th>Date & Time</th>
+                                <th>Staff</th>
+                                <th>Customer</th>
+                                <th>Items</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sale in sales %}
+                            <tr style="cursor:pointer" onclick="window.location='{% url 'sale_detail' sale.pk %}'">
+                                <td><span class="fw-semibold text-primary">{{ sale.invoice_number }}</span></td>
+                                <td>{{ sale.date|date:"M d, Y h:i A" }}</td>
+                                <td>{{ sale.user.get_full_name|default:sale.user.username }}</td>
+                                <td>{{ sale.customer_name|default:"Walk-in" }}</td>
+                                <td><span class="badge bg-secondary bg-opacity-25">{{ sale.items.count }} items</span></td>
+                                <td class="text-end fw-bold">₱{{ sale.total_amount|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if sales.has_other_pages %}
+                <div class="d-flex justify-content-center py-3">
+                    <nav>
+                        <ul class="pagination mb-0">
+                            {% if sales.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ sales.previous_page_number }}&search={{ search }}&date_from={{ date_from }}&date_to={{ date_to }}&staff={{ staff_filter }}&sort={{ sort_by }}">&laquo;</a>
+                            </li>
+                            {% endif %}
+                            {% for num in sales.paginator.page_range %}
+                                {% if num == sales.number %}
+                                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                {% elif num > sales.number|add:"-3" and num < sales.number|add:"3" %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}&search={{ search }}&date_from={{ date_from }}&date_to={{ date_to }}&staff={{ staff_filter }}&sort={{ sort_by }}">{{ num }}</a>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            {% if sales.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ sales.next_page_number }}&search={{ search }}&date_from={{ date_from }}&date_to={{ date_to }}&staff={{ staff_filter }}&sort={{ sort_by }}">&raquo;</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-journal-x"></i>
+                    <p>No sales found matching your criteria.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
