@@ -61,7 +61,7 @@ def logout_view(request):
 @login_required
 def dashboard(request):
     """Main dashboard with KPIs and charts."""
-    now = timezone.now()
+    now = timezone.localtime(timezone.now())
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=today_start.weekday())
     month_start = today_start.replace(day=1)
@@ -71,9 +71,12 @@ def dashboard(request):
     if request.user.role == 'staff':
         base_qs = base_qs.filter(user=request.user)
 
-    sales_today = base_qs.filter(date__gte=today_start).aggregate(
+    # Today's Sales
+    sales_today = base_qs.filter(date__date=now.date()).aggregate(
         total=Sum('total_amount'), count=Count('id')
     )
+    
+    # Other KPIs
     sales_week = base_qs.filter(date__gte=week_start).aggregate(
         total=Sum('total_amount'), count=Count('id')
     )
@@ -115,13 +118,15 @@ def dashboard(request):
 
     # Cash on Hand (Today)
     today_sales_total = sales_today['total'] or 0
-    today_cash_logs = CashLog.objects.filter(date__gte=today_start)
+    today_cash_logs = CashLog.objects.filter(date__date=now.date())
     
     initial_cash = today_cash_logs.filter(log_type='initial').aggregate(Sum('amount'))['amount__sum'] or 0
+    petty_cash = today_cash_logs.filter(log_type='petty_cash').aggregate(Sum('amount'))['amount__sum'] or 0
     adjustments = today_cash_logs.filter(log_type='adjustment').aggregate(Sum('amount'))['amount__sum'] or 0
     withdrawals = today_cash_logs.filter(log_type='withdrawal').aggregate(Sum('amount'))['amount__sum'] or 0
     
-    cash_on_hand = float(today_sales_total) + float(initial_cash) + float(adjustments) - float(withdrawals)
+    # Net Cash on Hand: Initial + Sales + Adj - Petty - Withdrawals
+    cash_on_hand = float(initial_cash) + float(today_sales_total) + float(adjustments) - float(petty_cash) - float(withdrawals)
 
     context = {
         'sales_today': sales_today,
@@ -262,10 +267,15 @@ def sales_history(request):
 @role_required('admin', 'manager')
 def reports(request):
     """Reports page with charts and export options."""
-    now = timezone.now()
+    now = timezone.localtime(timezone.now())
     period = request.GET.get('period', 'daily')
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
+
+    # Default to current month if no dates selected
+    if not date_from and not date_to:
+        date_from = now.replace(day=1).strftime('%Y-%m-%d')
+        date_to = now.strftime('%Y-%m-%d')
 
     qs = Sale.objects.all()
 
@@ -342,7 +352,7 @@ def reports(request):
     
     # Total Cash on Hand for this period
     total_sales = float(summary['total_revenue'] or 0)
-    net_cash_logs = cash_summary.get('initial', 0) + cash_summary.get('adjustment', 0) - cash_summary.get('withdrawal', 0)
+    net_cash_logs = cash_summary.get('initial', 0) + cash_summary.get('adjustment', 0) - cash_summary.get('petty_cash', 0) - cash_summary.get('withdrawal', 0)
     cash_on_hand = total_sales + net_cash_logs
 
     # Cash trend data for Chart.js

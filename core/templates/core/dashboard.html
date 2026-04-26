@@ -15,7 +15,8 @@
             </button>
             <div>
                 <h5 class="mb-0 fw-bold">Dashboard</h5>
-                <small class="text-muted">Welcome back, {{ request.user.first_name|default:request.user.username }}!</small>
+                <small class="text-muted">Welcome back,
+                    {{request.user.first_name|default:request.user.username}}!</small>
             </div>
         </div>
         <a href="{% url 'record_sale' %}" class="btn btn-primary">
@@ -35,7 +36,8 @@
         {% if low_stock_products %}
         <div class="row g-3 mb-4">
             <div class="col-12">
-                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #fff5f5 0%, #fff 100%); border-left: 4px solid #dc3545 !important;">
+                <div class="card border-0 shadow-sm"
+                    style="background: linear-gradient(135deg, #fff5f5 0%, #fff 100%); border-left: 4px solid #dc3545 !important;">
                     <div class="card-body d-flex align-items-center gap-3">
                         <div class="kpi-icon" style="background: #dc3545; color: white;">
                             <i class="bi bi-exclamation-triangle-fill"></i>
@@ -43,14 +45,16 @@
                         <div class="flex-grow-1">
                             <h6 class="mb-1 fw-bold text-danger">Inventory Attention Required</h6>
                             <p class="mb-0 text-muted small">
-                                The following items are low or out of stock: 
+                                The following items are low or out of stock:
                                 {% for p in low_stock_products|slice:":5" %}
-                                    <span class="badge {% if p.stock == 0 %}bg-danger{% else %}bg-warning text-dark{% endif %} bg-opacity-25 ms-1">
-                                        {{ p.name }} ({{ p.stock }})
-                                    </span>
+                                <span
+                                    class="badge {% if p.stock == 0 %}bg-danger{% else %}bg-warning text-dark{% endif %} bg-opacity-25 ms-1">
+                                    {{ p.name }} ({{ p.stock }})
+                                </span>
                                 {% endfor %}
                                 {% if low_stock_products|length > 5 %}
-                                    <span class="text-muted small">and {{ low_stock_products|length|add:"-5" }} more...</span>
+                                <span class="text-muted small">and {{ low_stock_products|length|add:"-5" }}
+                                    more...</span>
                                 {% endif %}
                             </p>
                         </div>
@@ -73,6 +77,19 @@
                         </div>
                         <div class="kpi-value">₱{{ sales_today.total|default:"0"|floatformat:2 }}</div>
                         <div class="kpi-label">Sales Today</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3">
+                <div class="card kpi-card kpi-warning">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="kpi-icon" style="background: var(--warning);">
+                                <i class="bi bi-wallet2"></i>
+                            </div>
+                        </div>
+                        <div class="kpi-value">₱{{ cash_on_hand|floatformat:2 }}</div>
+                        <div class="kpi-label">Cash on Hand (Today)</div>
                     </div>
                 </div>
             </div>
@@ -102,19 +119,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6 col-xl-3">
-                <div class="card kpi-card kpi-warning">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div class="kpi-icon" style="background: var(--warning);">
-                                <i class="bi bi-wallet2"></i>
-                            </div>
-                        </div>
-                        <div class="kpi-value">₱{{ cash_on_hand|floatformat:2 }}</div>
-                        <div class="kpi-label">Cash on Hand (Today)</div>
-                    </div>
-                </div>
-            </div>
+
         </div>
 
         <div class="row g-3">
@@ -142,13 +147,15 @@
                         {% if top_products %}
                         <div class="list-group list-group-flush">
                             {% for p in top_products %}
-                            <div class="list-group-item bg-transparent border-0 px-4 py-3" style="border-bottom: 1px solid var(--border-color) !important;">
+                            <div class="list-group-item bg-transparent border-0 px-4 py-3"
+                                style="border-bottom: 1px solid var(--border-color) !important;">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <div class="fw-semibold" style="font-size: 0.9rem;">{{ p.product_name }}</div>
                                         <small class="text-muted">{{ p.total_qty }} units sold</small>
                                     </div>
-                                    <span class="badge bg-primary bg-opacity-25 text-primary-emphasis">₱{{ p.total_revenue|floatformat:2 }}</span>
+                                    <span class="badge bg-primary bg-opacity-25 text-primary-emphasis">
+                                        ₱{{p.total_revenue|floatformat:2 }}</span>
                                 </div>
                             </div>
                             {% endfor %}
@@ -210,31 +217,31 @@
 
 {% block extra_js %}
 <script>
-const ctx = document.getElementById('salesChart').getContext('2d');
-const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-gradient.addColorStop(0, 'rgba(46, 125, 50, 0.25)');
-gradient.addColorStop(1, 'rgba(46, 125, 50, 0.02)');
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(46, 125, 50, 0.25)');
+    gradient.addColorStop(1, 'rgba(46, 125, 50, 0.02)');
 
-new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: {{ chart_labels|safe }},
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ chart_labels| safe }},
         datasets: [{
             label: 'Sales (₱)',
-            data: {{ chart_data|safe }},
-            borderColor: '#2e7d32',
-            backgroundColor: gradient,
-            borderWidth: 2.5,
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#2e7d32',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2,
-            pointRadius: 4,
-            pointHoverRadius: 6,
+            data: {{ chart_data| safe }},
+        borderColor: '#2e7d32',
+        backgroundColor: gradient,
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#2e7d32',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
         }]
     },
-    options: {
+        options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
@@ -248,8 +255,8 @@ new Chart(ctx, {
                 cornerRadius: 10,
                 padding: 12,
                 callbacks: {
-                    label: function(ctx) {
-                        return '₱' + ctx.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    label: function (ctx) {
+                        return '₱' + ctx.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2 });
                     }
                 }
             }

@@ -29,9 +29,23 @@ class User(AbstractUser):
         return self.role == 'staff'
 
 
+class Category(models.Model):
+    """Product categorization."""
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+
+    class Meta:
+        verbose_name_plural = "Categories"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class Product(models.Model):
     """Product/service model for the sales catalog."""
     name = models.CharField(max_length=200)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='products')
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=12, decimal_places=2)
     stock = models.PositiveIntegerField(default=0, help_text="Current stock quantity")
@@ -41,10 +55,10 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['name']
+        ordering = ['category', 'name']
 
     def __str__(self):
-        return f"{self.name} - ₱{self.price:,.2f}"
+        return f"[{self.category.name if self.category else 'No Category'}] {self.name} - ₱{self.price:,.2f}"
 
 
 class Sale(models.Model):

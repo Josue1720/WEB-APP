@@ -133,23 +133,28 @@ let saleItems = [];
 let itemCounter = 0;
 
 // Populate product dropdown
-const productSelect = document.getElementById('addProduct');
+const productSelect = $('#addProduct');
 products.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = `${p.name} — ₱${p.price.toFixed(2)} (Stock: ${p.stock})`;
-    opt.dataset.price = p.price;
-    opt.dataset.name = p.name;
-    opt.dataset.stock = p.stock;
-    productSelect.appendChild(opt);
+    const opt = new Option(`${p.name} — ₱${p.price.toFixed(2)} (Stock: ${p.stock})`, p.id);
+    $(opt).attr({
+        'data-price': p.price,
+        'data-name': p.name,
+        'data-stock': p.stock
+    });
+    productSelect.append(opt);
+});
+
+// Initialize Select2
+productSelect.select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select Product --',
+    allowClear: true
 });
 
 // Product selection behavior
-productSelect.addEventListener('change', function() {
-    if (this.value) {
-        document.getElementById('addQty').focus();
-        document.getElementById('addQty').select();
-    }
+productSelect.on('select2:select', function (e) {
+    document.getElementById('addQty').focus();
+    document.getElementById('addQty').select();
 });
 
 // Allow 'Enter' key on quantity to add item
@@ -162,8 +167,8 @@ document.getElementById('addQty').addEventListener('keydown', function(e) {
 
 // Add item
 document.getElementById('addItemBtn').addEventListener('click', function() {
-    const sel = productSelect.options[productSelect.selectedIndex];
-    if (!sel.value) { alert('Please select a product.'); return; }
+    const sel = productSelect.find(':selected')[0];
+    if (!sel || !sel.value) { alert('Please select a product.'); return; }
 
     const qty = parseInt(document.getElementById('addQty').value) || 1;
     const price = parseFloat(sel.dataset.price);
@@ -186,9 +191,9 @@ document.getElementById('addItemBtn').addEventListener('click', function() {
     });
 
     renderItems();
-    productSelect.value = '';
+    productSelect.val('').trigger('change');
     document.getElementById('addQty').value = 1;
-    productSelect.focus();
+    productSelect.select2('open');
 });
 
 function removeItem(id) {
